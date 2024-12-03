@@ -1,3 +1,5 @@
+Project Idea: Program not only helps people with there pc but they can also include lets say finances, events stuff like that almost like if a calendar + file sizer + money combined into one
+
 1. Feature Planning:
 
 Identify the core features you want to implement. What's the primary functionality your app should provide?
