@@ -35,3 +35,21 @@ def scan():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@file_bp.route('/files/scan', methods=['POST'])
+def scan_files():
+    data = request.json
+    print("Received request payload:", data)
+    
+    directory = data.get('directory')
+    if not directory:
+        return jsonify({"error": "Directory path is required"}), 400
+    
+    print("Scanning directory:", directory)
+    try:
+        files = scan_directory(directory, data.get('exclude_hidden', True), data.get('exclude_pyc', True), data.get('exclude_init', True))
+        print("Files scanned:", files)
+        return jsonify(files)
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({"error": str(e)}), 500

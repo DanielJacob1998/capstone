@@ -21,25 +21,19 @@ def scan_directory(
     """
     try:
         for root, dirs, files in os.walk(path):
-            # Skip unwanted directories
             if 'venv' in dirs:
                 dirs.remove('venv')  # Prevent os.walk from descending into 'venv'
 
             for file in files:
-                # Skip hidden files (like .DS_Store)
                 if exclude_hidden and file.startswith('.'):
                     continue
-
-                # Skip .pyc files
                 if exclude_pyc and file.endswith('.pyc'):
                     continue
-
-                # Skip __init__.py files
                 if exclude_init and file == '__init__.py':
                     continue
 
                 file_path = os.path.join(root, file)
-                file_size = os.path.getsize(file_path)
+                file_size = os.path.getsize(file_path)  # Get size in bytes
 
                 # Filter by file size range
                 if min_size and file_size < min_size:
@@ -52,12 +46,11 @@ def scan_directory(
                     last_access_time = os.path.getatime(file_path)
                     formatted_time = datetime.utcfromtimestamp(last_access_time).strftime('%m/%d/%Y %H:%M:%S')
 
-                    # Format file size
-                    human_readable_size = humanize.naturalsize(file_size)
-
+                    # Yield the raw file size for proper sorting
                     yield {
                         "file_path": file_path,
-                        "file_size": human_readable_size,
+                        "file_size": file_size,  # Raw size in bytes
+                        "formatted_size": humanize.naturalsize(file_size),  # Human-readable size
                         "last_access_time": formatted_time,
                     }
                 except OSError as e:
