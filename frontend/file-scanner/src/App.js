@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
 
@@ -7,31 +7,46 @@ function App() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [extensions, setExtensions] = useState("");
+  const [searchedExtensions, setSearchedExtensions] = useState([]);
+
+  useEffect(() => {
+    fetchExtensions();
+  }, []);
+
+  const fetchExtensions = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:5000/files/extensions/details");
+      setSearchedExtensions(response.data);
+    } catch (error) {
+      console.error("Error fetching extensions:", error);
+    }
+  };
 
   const handleScan = async () => {
     setLoading(true);
     setError("");
     setFiles([]);
     try {
-      const response = await axios.post("http://127.0.0.1:5000/files/scan", {
+      const payload = {
         directory,
         exclude_hidden: true,
         exclude_pyc: true,
         exclude_init: true,
-        sort_by: "file_size",
-        sort_order: "desc",
-      });
-      if (response.data && response.data.length > 0) {
-        setFiles(response.data);
-      } else {
-        setError("No files found in the selected directory.");
+        extensions: extensions ? extensions.split(",").map((ext) => ext.trim()) : null, // Convert to array or null
+      };
+      const response = await axios.post("http://127.0.0.1:5000/files/scan", payload);
+        if (response.data && response.data.length > 0) {
+          setFiles(response.data);
+        } else {
+          setError("No files found in the selected directory.");
+        }
+      } catch (err) {
+        setError("Error scanning the directory. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError("Error scanning the directory. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+};
 
   const formatSize = (bytes) => {
     if (bytes >= 1024 * 1024 * 1024) {
@@ -75,6 +90,12 @@ function App() {
           placeholder="Enter directory path"
           onChange={(e) => setDirectory(e.target.value)}
         />
+        <input
+          type="text"
+          value={extensions}
+          placeholder="Enter extensions (e.g., .txt,.jpg)"
+          onChange={(e) => setExtensions(e.target.value)}
+        />
         <button onClick={handleScan} disabled={loading}>
           {loading ? "Scanning..." : "Scan Directory"}
         </button>
@@ -103,9 +124,26 @@ function App() {
           </table>
         )}
       </div>
-      {files.length > 0 && (
-        <button onClick={exportToCSV}>Export to CSV</button>
-      )}
+      {files.length > 0 && <button onClick={exportToCSV}>Export to CSV</button>}
+      <div className="extensions-container">
+        <h2>Searched Extensions</h2>
+        {Object.keys(searchedExtensions).length > 0 ? (
+          <ul>
+            {Object.entries(searchedExtensions).map(([ext, files]) => (
+              <li key={ext}>
+                <strong>{ext}:</strong>
+                <ul>
+                  {files.map((file, index) => (
+                    <li key={index}>{file}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No extensions searched yet.</p>
+        )}
+      </div>
     </div>
   );
 }
