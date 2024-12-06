@@ -6,37 +6,39 @@ import json
 
 file_bp = Blueprint('file', __name__)
 
-# Global dictionary to track searched extensions and their files
-searched_extensions = {}
+# Global dictionary to track file metadata
+file_details = {}
 
-EXTENSIONS_FILE = "extensions.json"
+DETAILS_FILE = "file_details.json"
 
-def save_extensions_to_file():
+def save_details_to_file():
     try:
-        with open(EXTENSIONS_FILE, "w") as f:
-            json.dump(searched_extensions, f, indent=4)  # Add `indent=4` for readability
+        print(f"Attempting to save details to {DETAILS_FILE}")
+        with open(DETAILS_FILE, "w") as f:
+            json.dump(file_details, f, indent=4)
+        print(f"Details successfully saved to {DETAILS_FILE}")
     except Exception as e:
-        print(f"Error saving extensions to {EXTENSIONS_FILE}: {e}")
+        print(f"Error saving details to {DETAILS_FILE}: {e}")
 
-def load_extensions_from_file():
-    global searched_extensions
-    if os.path.exists(EXTENSIONS_FILE):
-        with open(EXTENSIONS_FILE, "r") as f:
+def load_details_from_file():
+    global file_details
+    if os.path.exists(DETAILS_FILE):
+        with open(DETAILS_FILE, "r") as f:
             try:
                 data = json.load(f)
-                # Validate that the loaded data is a dictionary
                 if isinstance(data, dict):
-                    searched_extensions.update(data)
+                    file_details.update(data)
+                    print(f"Loaded file details: {file_details}")
                 else:
-                    print(f"Invalid data in {EXTENSIONS_FILE}. Expected a dictionary.")
+                    print(f"Invalid data in {DETAILS_FILE}. Expected a dictionary.")
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON from {EXTENSIONS_FILE}: {e}")
+                print(f"Error decoding JSON from {DETAILS_FILE}: {e}")
 
 # Call this during startup
-load_extensions_from_file()
+load_details_from_file()
 
 # Call this before the app shuts down
-atexit.register(save_extensions_to_file)
+atexit.register(save_details_to_file)
 
 @file_bp.route("/scan", methods=["POST"])
 def scan_files():
@@ -48,9 +50,11 @@ def scan_files():
     min_size = data.get("min_size")
     max_size = data.get("max_size")
     extensions = data.get("extensions")
+    sort_by = data.get("sort_by", "file_name")
+    sort_order = data.get("sort_order", "asc")
 
     try:
-        scanned_files = list(
+        files = list(
             scan_directory(
                 directory,
                 exclude_hidden=exclude_hidden,
@@ -62,34 +66,35 @@ def scan_files():
             )
         )
 
-        # Add file paths to `searched_extensions` only if they match
-        if extensions:
-            for file in scanned_files:
-                for ext in extensions:
-                    if file["file_path"].endswith(ext):
-                        # Initialize the extension list if not already present
-                        if ext not in searched_extensions:
-                            searched_extensions[ext] = []
-                        # Add the file path if not already present
-                        if file["file_path"] not in searched_extensions[ext]:
-                            searched_extensions[ext].append(file["file_path"])
+        reverse_order = sort_order == "desc"
+        if sort_by == "file_name":
+            files.sort(key=lambda x: x.get("file_name", "").lower(), reverse=reverse_order)
+        elif sort_by == "file_size":
+            files.sort(key=lambda x: x.get("file_size", 0), reverse=reverse_order)
+        elif sort_by in ["date_created", "date_modified", "date_accessed"]:
+            files.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse_order)
 
-        # Sort files by size (default if no sort_by is specified)
-        scanned_files.sort(key=lambda x: x["file_size"], reverse=True)
+        # Update file_details dictionary
+        for file in files:
+            ext = os.path.splitext(file["file_path"])[-1].lower()
+            if ext not in file_details:
+                file_details[ext] = []
+            if file not in file_details[ext]:  # Avoid duplicates
+                file_details[ext].append(file)
 
-        return jsonify(scanned_files)
+        # Debugging log
+        print(f"Updated file details: {json.dumps(file_details, indent=4)}")
+
+        return jsonify(files)
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-@file_bp.route("/save_extensions", methods=["POST"])
-def save_extensions():
-    save_extensions_to_file()
-    return jsonify({"message": "Extensions saved successfully."})
+@file_bp.route("/save_details", methods=["POST"])
+def save_details():
+    save_details_to_file()
+    return jsonify({"message": "File details saved successfully."})
 
-
-@file_bp.route("/extensions/details", methods=["GET"])
-def get_extensions_details():
-    return jsonify({
-        ext: searched_extensions[ext]
-        for ext in searched_extensions
-    })
+@file_bp.route("/details", methods=["GET"])
+def get_details():
+    print(file_details)  # Or file_details if renamed
+    return jsonify(file_details)

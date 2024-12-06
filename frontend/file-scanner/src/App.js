@@ -1,27 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import "./App.css";
 
 function App() {
   const [directory, setDirectory] = useState("");
+  const [fileDetails, setFileDetails] = useState("");
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [extensions, setExtensions] = useState("");
-  const [searchedExtensions, setSearchedExtensions] = useState([]);
 
-  useEffect(() => {
-    fetchExtensions();
-  }, []);
-
-  const fetchExtensions = async () => {
-    try {
-      const response = await axios.get("http://127.0.0.1:5000/files/extensions/details");
-      setSearchedExtensions(response.data);
-    } catch (error) {
-      console.error("Error fetching extensions:", error);
-    }
-  };
+  // New state variables for sorting options
+  const [sortBy, setSortBy] = useState("file_name"); // Default to sorting by file name
+  const [sortOrder, setSortOrder] = useState("asc"); // Default to ascending order
 
   const handleScan = async () => {
     setLoading(true);
@@ -33,20 +23,38 @@ function App() {
         exclude_hidden: true,
         exclude_pyc: true,
         exclude_init: true,
-        extensions: extensions ? extensions.split(",").map((ext) => ext.trim()) : null, // Convert to array or null
+        extensions: fileDetails ? fileDetails.split(",").map((detail) => detail.trim()) : null,
+        sort_by: sortBy,
+        sort_order: sortOrder,
       };
+
       const response = await axios.post("http://127.0.0.1:5000/files/scan", payload);
-        if (response.data && response.data.length > 0) {
-          setFiles(response.data);
-        } else {
-          setError("No files found in the selected directory.");
-        }
-      } catch (err) {
-        setError("Error scanning the directory. Please try again.");
-      } finally {
-        setLoading(false);
+      if (response.data && response.data.length > 0) {
+        const sortedFiles = response.data.sort((a, b) => {
+          if (sortBy.includes("date")) {
+            // Parse dates for proper comparison
+            const dateA = new Date(a[sortBy]);
+            const dateB = new Date(b[sortBy]);
+            return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+          } else if (sortBy === "file_size") {
+            return sortOrder === "asc" ? a.file_size - b.file_size : b.file_size - a.file_size;
+          } else {
+            // Default to lexicographical sorting (e.g., for file_name)
+            return sortOrder === "asc"
+              ? a[sortBy].localeCompare(b[sortBy])
+              : b[sortBy].localeCompare(a[sortBy]);
+          }
+        });
+        setFiles(sortedFiles);
+      } else {
+        setError("No files found in the selected directory.");
       }
-};
+    } catch (err) {
+      setError("Error scanning the directory. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatSize = (bytes) => {
     if (bytes >= 1024 * 1024 * 1024) {
@@ -58,26 +66,6 @@ function App() {
     } else {
       return bytes + " Bytes";
     }
-  };
-
-  const exportToCSV = () => {
-    const csvContent = [
-      ["File Path", "Size", "Last Accessed"],
-      ...files.map((file) => [
-        file.file_path,
-        formatSize(file.file_size),
-        file.last_access_time,
-      ]),
-    ]
-      .map((e) => e.join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "scanned_files.csv";
-    link.click();
   };
 
   return (
@@ -92,10 +80,25 @@ function App() {
         />
         <input
           type="text"
-          value={extensions}
-          placeholder="Enter extensions (e.g., .txt,.jpg)"
-          onChange={(e) => setExtensions(e.target.value)}
+          value={fileDetails}
+          placeholder="Enter filters (e.g., .txt,.jpg)"
+          onChange={(e) => setFileDetails(e.target.value)}
         />
+        <div className="sorting-container">
+          <label>Sort By:</label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="file_name">File Name</option>
+            <option value="file_size">File Size</option>
+            <option value="date_created">Date Created</option>
+            <option value="date_modified">Date Modified</option>
+            <option value="date_accessed">Date Accessed</option>
+          </select>
+          <label>Order:</label>
+          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
         <button onClick={handleScan} disabled={loading}>
           {loading ? "Scanning..." : "Scan Directory"}
         </button>
@@ -108,8 +111,10 @@ function App() {
             <thead>
               <tr>
                 <th>File Path</th>
-                <th>Size</th>
-                <th>Last Accessed</th>
+                <th>File Size</th>
+                <th>Date Created</th>
+                <th>Date Modified</th>
+                <th>Date Accessed</th>
               </tr>
             </thead>
             <tbody>
@@ -117,31 +122,13 @@ function App() {
                 <tr key={index}>
                   <td>{file.file_path}</td>
                   <td>{formatSize(file.file_size)}</td>
-                  <td>{file.last_access_time}</td>
+                  <td>{file.date_created}</td>
+                  <td>{file.date_modified}</td>
+                  <td>{file.date_accessed}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
-      {files.length > 0 && <button onClick={exportToCSV}>Export to CSV</button>}
-      <div className="extensions-container">
-        <h2>Searched Extensions</h2>
-        {Object.keys(searchedExtensions).length > 0 ? (
-          <ul>
-            {Object.entries(searchedExtensions).map(([ext, files]) => (
-              <li key={ext}>
-                <strong>{ext}:</strong>
-                <ul>
-                  {files.map((file, index) => (
-                    <li key={index}>{file}</li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No extensions searched yet.</p>
         )}
       </div>
     </div>

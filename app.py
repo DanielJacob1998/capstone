@@ -5,6 +5,7 @@ from backend.routes.file_routes import file_bp
 def create_app():
     app = Flask(__name__)
     CORS(app)  # Enable CORS for all routes
+    print(app.url_map)
     app.register_blueprint(file_bp, url_prefix="/files")
 
     @app.route("/")
