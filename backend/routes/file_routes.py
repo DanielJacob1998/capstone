@@ -53,6 +53,11 @@ def scan_files():
     sort_by = data.get("sort_by", "file_name")
     sort_order = data.get("sort_order", "asc")
 
+    # Date ranges
+    date_created_range = data.get("date_created_range")
+    date_modified_range = data.get("date_modified_range")
+    date_accessed_range = data.get("date_accessed_range")
+
     try:
         files = list(
             scan_directory(
@@ -63,6 +68,9 @@ def scan_files():
                 min_size=min_size,
                 max_size=max_size,
                 extensions=extensions,
+                date_created_range=tuple(map(datetime.fromisoformat, date_created_range)) if date_created_range else None,
+                date_modified_range=tuple(map(datetime.fromisoformat, date_modified_range)) if date_modified_range else None,
+                date_accessed_range=tuple(map(datetime.fromisoformat, date_accessed_range)) if date_accessed_range else None,
             )
         )
 
@@ -73,17 +81,6 @@ def scan_files():
             files.sort(key=lambda x: x.get("file_size", 0), reverse=reverse_order)
         elif sort_by in ["date_created", "date_modified", "date_accessed"]:
             files.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse_order)
-
-        # Update file_details dictionary
-        for file in files:
-            ext = os.path.splitext(file["file_path"])[-1].lower()
-            if ext not in file_details:
-                file_details[ext] = []
-            if file not in file_details[ext]:  # Avoid duplicates
-                file_details[ext].append(file)
-
-        # Debugging log
-        print(f"Updated file details: {json.dumps(file_details, indent=4)}")
 
         return jsonify(files)
     except Exception as e:
