@@ -13,12 +13,19 @@ def scan_directory(
                 dirs.remove('venv')
 
             for file in files:
+                # Skip hidden files
                 if exclude_hidden and file.startswith('.'):
                     continue
                 if exclude_pyc and file.endswith('.pyc'):
                     continue
                 if exclude_init and file == '__init__.py':
                     continue
+                
+                # Apply extensions filter
+                if extensions:
+                    file_extension = os.path.splitext(file)[1].lower()
+                    if file_extension not in extensions:
+                        continue
 
                 file_path = os.path.join(root, file)
                 file_size = os.path.getsize(file_path)
