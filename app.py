@@ -8,7 +8,7 @@ CORS(app)  # Enable Cross-Origin Resource Sharing for React frontend
 
 # Register blueprints
 app.register_blueprint(file_bp, url_prefix="/files")  # File scanner routes
-app.register_blueprint(event_bp, url_prefix="/api/events")  # Events routes
+app.register_blueprint(event_bp, url_prefix="/api")  # Events routes
 
 # Placeholder for finances (will later be implemented as its own blueprint)
 @app.route("/api/finances", methods=["GET", "POST"])
@@ -33,3 +33,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
