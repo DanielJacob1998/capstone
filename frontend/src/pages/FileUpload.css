@@ -1,0 +1,64 @@
+.file-upload {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.file-dropzone {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    cursor: pointer;
+    background-color: #f9f9f9;
+}
+
+.file-dropzone:hover {
+    background-color: #e9f5ff;
+}
+
+.file-dropzone input {
+    display: none;
+}
+
+.progress-bar {
+    height: 20px;
+    background-color: #f3f3f3;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+    line-height: 20px;
+    font-size: 14px;
+    transition: width 0.2s ease-in-out;
+}
+
+.upload-message {
+    color: #d9534f;
+    margin-top: 10px;
+}
+
+button {
+    margin: 10px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    background-color: #007bff;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
